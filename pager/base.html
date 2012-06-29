@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<!--[if lt IE 7 ]><html class="ie ie6" lang="en"> <![endif]-->
+<!--[if IE 7 ]><html class="ie ie7" lang="en"> <![endif]-->
+<!--[if IE 8 ]><html class="ie ie8" lang="en"> <![endif]-->
+<!--[if (gte IE 9)|!(IE)]><!--><html lang="en"> <!--<![endif]-->
+<head>
+
+	<!-- Basic Page Needs
+  ================================================== -->
+	<meta charset="utf-8">
+	<title>Who has the pager? Datasphere Dev Team</title>
+	<meta name="description" content="">
+	<meta name="author" content="Datasphere">
+
+	<!-- Mobile Specific Metas
+  ================================================== -->
+	<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+
+	<!-- CSS
+  ================================================== -->
+	<link rel="stylesheet" href="/css/base.css">
+	<link rel="stylesheet" href="/css/skeleton.css">
+	<link rel="stylesheet" href="/css/layout.css">
+
+	<!--[if lt IE 9]>
+		<script src="http://html5shim.googlecode.com/svn/trunk/html5.js"></script>
+	<![endif]-->
+
+	<!-- Favicons
+	================================================== -->
+	<link rel="shortcut icon" href="css/dtsp.ico">
+	<link rel="apple-touch-icon" href="css/ds-logo.png">
+	<link rel="apple-touch-icon" sizes="72x72" href="css/ds-logo.png">
+	<link rel="apple-touch-icon" sizes="114x114" href="css/ds-logo.png">
+
+</head>
+<body>
+
+
+
+	<!-- Primary Page Layout
+	================================================== -->
+
+
+	<div class="container" id="main">
+		<div class="container" id="header"/>
+		<div class="eight columns">
+		<a href="/">
+		<img src="css/logo.png" style="float: left; margin: 10px; padding-top: 5px;"/>
+			<h1 class="remove-bottom">Who has the pager?</h1>
+			</a>
+			</div>
+		</div>
+  <div class="container">
+  {% block content %}
+  {% endblock %}
+  </div>
+  <div style="float:right; padding: 5px;">
+			{% if user %}
+      <p>{{user.name}} (<a class="login-link" href="/logout">logout</a>)</p>
+    {% endif %}
+		</div>
+	</div><!-- container -->
+
+
+
+	<!-- JS
+	================================================== -->
+	<script src="http://code.jquery.com/jquery-1.7.1.min.js"></script>
+	<script src="javascripts/tabs.js"></script>
+
+<!-- End Document
+================================================== -->
+</body>
+</html>

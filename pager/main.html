@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="container">
+			<h5>For the week of {{Monday.strftime("%B %d, %Y")}}</h5>		
+		<div id="blocks" class="eight columns">
+			<h3>Currently on P1:</h3>
+			<h3 style="padding-left: 10px;">{{P1}}</h3>			
+		</div>
+		<div id="blocks" class="eight columns">
+			<h3>Currently on P2:</h3>
+			<h3 style="padding-left: 10px;">{{P2}}</h3>
+		</div>
+		</div>
+			<hr />
+			<a href="/lastweek" id="dsbutton" class="button" style="float: left;">Last Week</a>  
+			<a href="/nextweek" id="dsbutton" class="button" style="float: right;">Next Week</a>
+
+{% endblock %}
