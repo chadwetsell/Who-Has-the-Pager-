@@ -15,3 +15,15 @@ indexes:
   properties:
   - name: created
     direction: desc
+
+- kind: Pager
+  properties:
+  - name: monday
+  - name: created
+    direction: desc
+
+- kind: Pager
+  properties:
+  - name: monday
+  - name: last_modified
+    direction: desc

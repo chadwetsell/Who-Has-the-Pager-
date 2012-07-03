@@ -55,10 +55,14 @@
   {% block content %}
   {% endblock %}
   </div>
-  <div style="float:right; padding: 5px;">
+  		<div id="footer" style="float: left;">
+		<a href="http://ssweb/dev/Lists/Pager%20Signup/calendar.aspx">Pager Sign-Up</a>
+		</div>
+  <div id="footer" style="float:right; text-align: right; font-size: 80%;">
 			{% if user %}
       <p>{{user.name}} (<a class="login-link" href="/logout">logout</a>)</p>
-    {% endif %}
+    <p>Last updated on {{update.strftime("%B %d, %Y")}}.</p>   
+        {% endif %}
 		</div>
 	</div><!-- container -->
 

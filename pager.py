@@ -117,6 +117,7 @@ EMAIL_RE  = re.compile(r'^[\S]+@[\S]+\.[\S]+$')
 def valid_email(email):
     return not email or EMAIL_RE.match(email)
 
+#User Log-in form
 class Login(BlogHandler):
     def get(self):
         self.render('login-form.html')
@@ -125,7 +126,7 @@ class Login(BlogHandler):
         self.username = self.request.get('username')
         username = self.username
         
-        domain = username[-15:]
+        domain = username[-15:].lower()
         if domain == '@datasphere.com':
             self.user = username[:-16]
             us = User.register(self.username, self.user)
@@ -166,21 +167,13 @@ class Pager(db.Model):
 
 
 
-#Imports the Pager signup CSV
+        #Imports the Pager signup CSV
 CSV = csv.reader(open('pager.csv'))
 
-#temp Dictionary for putting the CSV into the DB
+        #temp Dictionary for putting the CSV into the DB
 CACHE = {}
 
-#Temp f(x) to find the first Monday of a year.
-def findMonday():
-    for x in range(1,7):
-        d = datetime.date(2012, 1, x)
-        tup = datetime.date.timetuple(d)
-        if tup.tm_wday == 0:
-            return d
-
-#Builds a Dictionary of the P1/P2 signups by Mondays
+        #Builds a Dictionary of the P1/P2 signups by Mondays
 def csv2date():
     for e in CSV:
         if not e[0] == 'Title':
@@ -191,20 +184,18 @@ def csv2date():
             day = int(monday[slash + 1:slash2])
             year = int(monday[-4:])
             Date = datetime.date(year, month, day)
-            for k in CACHE:
-            	#CACHE[k]['p1'] = CACHE[k]['p2'] = None
-            	if CACHE[k]['monday'] == Date:
-            		week = k
+            Week = Date.isocalendar()[1]
+
             if '1' in e[0]:
-                CACHE[week]['p1'] = e[0]
+                CACHE[Week]['p1'] = e[0]
             if '2' in e[0]:
-                CACHE[week]['p2'] = e[0]
+                CACHE[Week]['p2'] = e[0]
 
 
-#Sets up the Database of Weeks/Mondays/P1/P2 (using the Dictionary)
+        #Sets up the Database of Weeks/Mondays/P1/P2 (using the Dictionary)
 def initDB():
     week = 0
-    monday = datetime.date(2011, 12, 19)
+    monday = datetime.date(2011, 12, 26)
     while week < 60:
         CACHE[week] = {'monday': monday, 'p1': None, 'p2': None}
         week += 1
@@ -213,84 +204,103 @@ def initDB():
     for k in CACHE:
     	week = k
     	monday = CACHE[k]['monday']
+    	update = datetime.date.today()
     	p1 = CACHE[k]['p1']
     	p2 = CACHE[k]['p2']
     	p = Pager(week = week, monday = monday, p1 = p1, p2 = p2)
+    	memcache.set(str(week), (monday, update, p1, p2))
     	p.put()
 
-#Returns the Monday for any given date.
+        #Returns the Monday for any given date.
 def findMonday(date):
     of = date.weekday()
     monday = date - datetime.timedelta(of)
     return monday
 
-#Returns the Week #1 for a given Monday.
-def findWeek(date):
-	for k in CACHE:
-		print 'cache', CACHE[k]
-		if CACHE[k]['monday'] == date:
-			return k
+        #Returns the P1 and P2 person for a given Monday.
+def memPeeps(date):
+	entry = memcache.get(str(date))
+	update = entry[1]
+	p1 = entry[2]
+	p2 = entry [3]
+	return p1, p2, update
 
-#Returns the P1 and P2 person for a given Monday.
-def findPeeps(date):
-	entries = Pager.gql("where monday = :1", date)
-	for entry in entries:
-		return entry.p1, entry.p2	
-
-#Point bad links back to the main page
-class ErrorPage(BlogHandler):
-	def get(self):	
-		self.redirect('/')  
-
-#Loads the front page ("this week")
+        #Loads the front page ("this week")
 class MainPage(BlogHandler):
 	def get(self):
 		if not self.user:
 			self.redirect("/login")
 		else:
-			Today = datetime.date.today()
-			Monday = findMonday(Today)
-			posts = Pager.all().order('-last_modified').fetch(limit = 1)
-			if not posts:
-				initDB()
-
-			P1, P2 = findPeeps(Monday)
+			Day = datetime.date.today()
+			Monday = findMonday(Day)
+			Week = Day.isocalendar()[1]
+			if not memcache.get(str(Week)):
+                            initDB()
+			P1, P2, update = memPeeps(Week)
 			
-			self.render("main.html", Monday = Monday, P1 = P1, P2 = P2)
+			self.render("main.html",
+                                    Monday = Monday,
+                                    P1 = P1,
+                                    P2 = P2,
+                                    update = update
+                                    )
 			return
 
-#Loads the "Next Week" page
+        #Loads the "Next Week" page
 class Next(BlogHandler):
 	def get(self):
 		if not self.user:
 			self.redirect("/login")
 		else:
-			Today = datetime.date.today()
-			Monday = findMonday(Today + datetime.timedelta(7))
-			P1, P2 = findPeeps(Monday)
-			self.render("next.html", Monday = Monday, P1 = P1, P2 = P2)
+			Day = datetime.date.today() + datetime.timedelta(7)
+			Monday = findMonday(Day)
+			Week = Day.isocalendar()[1]
+			P1, P2, update = memPeeps(Week)
+			self.render("next.html",
+                                    Monday = Monday,
+                                    P1 = P1,
+                                    P2 = P2,
+                                    update = update)
 			return
 
-#Loads the "Previous Week" page
+        #Loads the "Previous Week" page
 class Previous(BlogHandler):
 	def get(self):
 		if not self.user:
 			self.redirect("/login")
 		else:
-			Today = datetime.date.today()
-			Monday = findMonday(Today - datetime.timedelta(7))
-			P1, P2 = findPeeps(Monday)
-			self.render("previous.html", Monday = Monday, P1 = P1, P2 = P2)
+			Day = datetime.date.today() - datetime.timedelta(7)
+			Monday = findMonday(Day)
+			Week = Day.isocalendar()[1]
+			P1, P2, update = memPeeps(Week)
+			self.render("previous.html",
+                                    Monday = Monday,
+                                    P1 = P1,
+                                    P2 = P2,
+                                    update = update)
 			return
 
+        #Page to add to the DB
+class UpdateDB(BlogHandler):
+    def get(self):
+        initDB()
+        self.redirect("/")
 
+        #Empty the DB and Cache
+class DeleteDB(BlogHandler):
+    def get(self):
 
-PAGE_RE = r'(/(?:[a-zA-Z0-9_-]+/?)*)'
+#    def post(self):
+        db.delete(Pager.all())
+        memcache.flush_all()
+        self.redirect("/")
+
 app = webapp2.WSGIApplication([('/', MainPage),
-							   ('/login', Login),
+			       ('/login', Login),
                                ('/logout', Logout),
                                ('/lastweek', Previous),
-			       			   ('/nextweek', Next)
-			       			   #('/' + PAGE_RE, ErrorPage)
+			       ('/nextweek', Next),
+                               ('/update', UpdateDB),
+                               ('/delete', DeleteDB)
 			       			   ],
                               debug=True)
