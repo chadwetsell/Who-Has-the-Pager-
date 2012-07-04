@@ -1,24 +1,32 @@
+
+#
+#Libraries
+#
+
 import os
 import re
 import random
 import hashlib
 import hmac
 from string import letters
+
 from datetime import datetime, timedelta
-import csv
 import datetime
 
+import csv
 import webapp2
 import jinja2
 
 from google.appengine.api import memcache
 from google.appengine.ext import db
+from google.appengine.ext import blobstore
+from google.appengine.ext.webapp import blobstore_handlers
 
+
+#HTML Templating
 template_dir = os.path.join(os.path.dirname(__file__), 'pager')
 jinja_env = jinja2.Environment(loader = jinja2.FileSystemLoader(template_dir),
                                autoescape = True)
-
-secret = 'chadillac'
 
 def render_str(template, **params):
     t = jinja_env.get_template(template)
@@ -32,6 +40,9 @@ def check_secure_val(secure_val):
     if secure_val == make_secure_val(val):
         return val
 
+secret = 'chadillac'
+
+#Basic Handler that loads pages, sets cookies, etc.
 class BlogHandler(webapp2.RequestHandler):
     def write(self, *a, **kw):
         self.response.out.write(*a, **kw)
@@ -120,7 +131,10 @@ def valid_email(email):
 #User Log-in form
 class Login(BlogHandler):
     def get(self):
-        self.render('login-form.html')
+        if not self.user:
+	    self.render('login-form.html')
+	else:
+            self.redirect("/")
 
     def post(self):
         self.username = self.request.get('username')
@@ -165,8 +179,6 @@ class Pager(db.Model):
         u = Pager.all().filter('week =', week).get()
         return u
 
-
-
         #Imports the Pager signup CSV
 CSV = csv.reader(open('pager.csv'))
 
@@ -174,8 +186,8 @@ CSV = csv.reader(open('pager.csv'))
 CACHE = {}
 
         #Builds a Dictionary of the P1/P2 signups by Mondays
-def csv2date():
-    for e in CSV:
+def csv2date(csv):
+    for e in csv:
         if not e[0] == 'Title':
             monday = e[1]
             slash = monday.find('/')
@@ -200,7 +212,7 @@ def initDB():
         CACHE[week] = {'monday': monday, 'p1': None, 'p2': None}
         week += 1
         monday += datetime.timedelta(7)
-    csv2date()
+    csv2date(CSV)
     for k in CACHE:
     	week = k
     	monday = CACHE[k]['monday']
@@ -218,12 +230,15 @@ def findMonday(date):
     return monday
 
         #Returns the P1 and P2 person for a given Monday.
-def memPeeps(date):
-	entry = memcache.get(str(date))
+def memPeeps(delta):
+        Day = datetime.date.today() + datetime.timedelta(delta)
+        Monday = findMonday(Day)
+	Week = Day.isocalendar()[1]
+	entry = memcache.get(str(Week))
 	update = entry[1]
 	p1 = entry[2]
 	p2 = entry [3]
-	return p1, p2, update
+	return Monday, p1, p2, update
 
         #Loads the front page ("this week")
 class MainPage(BlogHandler):
@@ -231,13 +246,11 @@ class MainPage(BlogHandler):
 		if not self.user:
 			self.redirect("/login")
 		else:
-			Day = datetime.date.today()
-			Monday = findMonday(Day)
-			Week = Day.isocalendar()[1]
+			Week = datetime.date.today().isocalendar()[1]
 			if not memcache.get(str(Week)):
                             initDB()
-			P1, P2, update = memPeeps(Week)
-			
+
+			Monday, P1, P2, update = memPeeps(0)
 			self.render("main.html",
                                     Monday = Monday,
                                     P1 = P1,
@@ -252,10 +265,7 @@ class Next(BlogHandler):
 		if not self.user:
 			self.redirect("/login")
 		else:
-			Day = datetime.date.today() + datetime.timedelta(7)
-			Monday = findMonday(Day)
-			Week = Day.isocalendar()[1]
-			P1, P2, update = memPeeps(Week)
+			Monday, P1, P2, update = memPeeps(7)
 			self.render("next.html",
                                     Monday = Monday,
                                     P1 = P1,
@@ -269,10 +279,7 @@ class Previous(BlogHandler):
 		if not self.user:
 			self.redirect("/login")
 		else:
-			Day = datetime.date.today() - datetime.timedelta(7)
-			Monday = findMonday(Day)
-			Week = Day.isocalendar()[1]
-			P1, P2, update = memPeeps(Week)
+			Monday, P1, P2, update = memPeeps(-7)
 			self.render("previous.html",
                                     Monday = Monday,
                                     P1 = P1,
@@ -289,11 +296,33 @@ class UpdateDB(BlogHandler):
         #Empty the DB and Cache
 class DeleteDB(BlogHandler):
     def get(self):
-
+#       Add a confirmation page to this?
 #    def post(self):
         db.delete(Pager.all())
         memcache.flush_all()
         self.redirect("/")
+
+
+        #Upload new CSV to update the DB
+class Uploader(BlogHandler, blobstore_handlers.BlobstoreUploadHandler):
+    def get(self):
+        url = blobstore.create_upload_url('/upload')
+        update = datetime.date.today()
+        self.render("upload.html", url = url, update = update)
+
+    def post(self):
+        #upload_files = self.get_uploads('file')
+        #blob_info = upload_files[0]
+        self.redirect('/upload')
+        
+        #csv_file = upload_files[0].filename()
+        #blob_info
+        #csv_file = self.request.get('file')
+        #CSV = csv.reader(open('pager.csv'))
+        #csv2date()
+
+      
+
 
 app = webapp2.WSGIApplication([('/', MainPage),
 			       ('/login', Login),
@@ -301,6 +330,8 @@ app = webapp2.WSGIApplication([('/', MainPage),
                                ('/lastweek', Previous),
 			       ('/nextweek', Next),
                                ('/update', UpdateDB),
-                               ('/delete', DeleteDB)
-			       			   ],
+                               ('/delete', DeleteDB),
+                               ('/upload', Uploader),
+                               #('/_ah/upload/', UploadHandler)
+                            ],
                               debug=True)

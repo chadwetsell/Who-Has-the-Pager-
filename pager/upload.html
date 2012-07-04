@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+		<div class="sixteen columns">
+		<form method="post" action="{{url}}" enctype="multipart/form-data">
+			 <label for="regularInput">Submit updates to the Calendar:</label>
+  <input type="file" name="file" value="{{file}}" placeholder="CSV"/>
+		      <div class="error">
+        {{error}}
+      </div>
+
+      <input id="dsbutton" type="submit">	
+      </form>
+			<hr />
+
+    </div>
+{% endblock %}
